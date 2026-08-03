@@ -1,4 +1,4 @@
-// Logic per al CMS Admin Panel amb Contrasenya
+// Logic per al CMS Admin Panel amb suport d'Imatges per a Vercel
 document.addEventListener('DOMContentLoaded', () => {
   checkAuthSession();
 
@@ -101,24 +101,49 @@ async function loadAdminArticles() {
   }
 }
 
-// Enviar nou article al backend amb capçalera d'autenticació
+// Enviar nou article al backend amb conversió d'imatge a DataURL (per a compatibilitat total amb Vercel)
 async function handleCreateArticle(e) {
   e.preventDefault();
 
-  const form = e.target;
   const submitBtn = document.getElementById('btnSubmit');
   submitBtn.disabled = true;
   submitBtn.textContent = 'Publicant...';
 
-  const formData = new FormData(form);
+  const title = document.getElementById('title').value;
+  const subtitle = document.getElementById('subtitle').value;
+  const category = document.getElementById('category').value;
+  const author = document.getElementById('author').value;
+  const summary = document.getElementById('summary').value;
+  const content = document.getElementById('content').value;
+  const imageFileInput = document.getElementById('imageFile');
+
+  let imageDataUrl = '';
+  if (imageFileInput && imageFileInput.files && imageFileInput.files[0]) {
+    try {
+      imageDataUrl = await readFileAsDataURL(imageFileInput.files[0]);
+    } catch (err) {
+      console.error("Error llegint imatge:", err);
+    }
+  }
+
+  const payload = {
+    title,
+    subtitle,
+    category,
+    author,
+    summary,
+    content,
+    image: imageDataUrl || '/expo_img/1688980723144.jpg'
+  };
 
   try {
     const res = await fetch('/api/articles', {
       method: 'POST',
       headers: {
+        'Content-Type': 'application/json',
         'x-admin-password': getAuthToken()
       },
-      body: formData
+      body: JSON.stringify(payload)
     });
 
     if (!res.ok) {
@@ -127,7 +152,7 @@ async function handleCreateArticle(e) {
     }
 
     alert("✅ Article publicat amb èxit!");
-    form.reset();
+    document.getElementById('articleForm').reset();
     loadAdminArticles();
   } catch (err) {
     alert("❌ Error: " + err.message);
@@ -137,7 +162,16 @@ async function handleCreateArticle(e) {
   }
 }
 
-// Eliminar un article amb capçalera d'autenticació
+function readFileAsDataURL(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+// Eliminar un article
 async function deleteArticle(id, title) {
   if (!confirm(`Estàs segur/a de voler esborrar l'article "${title}"?`)) {
     return;
