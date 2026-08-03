@@ -53,12 +53,17 @@ function getInitialLocalArticles() {
   }
 }
 
-// Helper asíncron per carregar articles (des de Redis si està connectat, o local)
+// Helper asíncron per carregar articles (des de Redis o local)
 async function getArticlesAsync() {
   if (REDIS_URL && REDIS_TOKEN) {
     try {
-      const res = await fetch(`${REDIS_URL}/get/articles`, {
-        headers: { Authorization: `Bearer ${REDIS_TOKEN}` }
+      const res = await fetch(REDIS_URL, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${REDIS_TOKEN}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(["GET", "articles"])
       });
       const data = await res.json();
       if (data && data.result) {
@@ -78,13 +83,13 @@ async function getArticlesAsync() {
 async function saveArticlesAsync(articles) {
   if (REDIS_URL && REDIS_TOKEN) {
     try {
-      await fetch(`${REDIS_URL}/set/articles`, {
+      await fetch(REDIS_URL, {
         method: 'POST',
         headers: {
           Authorization: `Bearer ${REDIS_TOKEN}`,
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify(JSON.stringify(articles))
+        body: JSON.stringify(["SET", "articles", JSON.stringify(articles)])
       });
     } catch (err) {
       console.error("Error desant a Redis:", err);
