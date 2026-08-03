@@ -7,9 +7,9 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'eva';
 
-// Variables d'entorn Upstash Redis / Vercel KV
-const REDIS_URL = process.env.UPSTASH_REDIS_REST_URL || process.env.KV_REST_API_URL || process.env.STORAGE_REST_API_URL;
-const REDIS_TOKEN = process.env.UPSTASH_REDIS_REST_TOKEN || process.env.KV_REST_API_TOKEN || process.env.STORAGE_REST_API_TOKEN;
+// Prioritzar les URLs HTTP de Vercel KV / Upstash REST API
+const REDIS_URL = process.env.KV_REST_API_URL || process.env.UPSTASH_REDIS_REST_URL || process.env.STORAGE_REST_API_URL;
+const REDIS_TOKEN = process.env.KV_REST_API_TOKEN || process.env.UPSTASH_REDIS_REST_TOKEN || process.env.STORAGE_REST_API_TOKEN;
 
 // Middleware amb límit augmentat per a imatges en DataURL
 app.use(express.json({ limit: '10mb' }));
@@ -53,9 +53,9 @@ function getInitialLocalArticles() {
   }
 }
 
-// Helper asíncron per carregar articles (des de Redis o local)
+// Helper asíncron per carregar articles (des de Redis si està connectat, o local)
 async function getArticlesAsync() {
-  if (REDIS_URL && REDIS_TOKEN) {
+  if (REDIS_URL && REDIS_TOKEN && REDIS_URL.startsWith('http')) {
     try {
       const res = await fetch(REDIS_URL, {
         method: 'POST',
@@ -81,7 +81,7 @@ async function getArticlesAsync() {
 
 // Helper asíncron per desar articles (a Redis i local)
 async function saveArticlesAsync(articles) {
-  if (REDIS_URL && REDIS_TOKEN) {
+  if (REDIS_URL && REDIS_TOKEN && REDIS_URL.startsWith('http')) {
     try {
       await fetch(REDIS_URL, {
         method: 'POST',
