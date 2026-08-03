@@ -1,0 +1,35 @@
+[
+  {
+    "id": "art-101",
+    "title": "Guanyador del Premi Junceda 2021 d'Il·lustració",
+    "subtitle": "Guardonat en la categoria de millor llibre de no ficció per a adults i infantil",
+    "category": "Premi & Publicació",
+    "date": "2021-11-15",
+    "author": "Eva Miquel Tortosa",
+    "image": "/expo_img/1688980723144.jpg",
+    "summary": "El projecte 'Desde el agua', publicat en format llibre per Zahorí Books amb la col·laboració de la Creu Roja, ha estat reconegut amb el prestigiós Premi Junceda per la seva extraordinària sensibilitat artística i documental.",
+    "content": "El llibre 'Desde el agua' recull el treball meticulós a grafit realitzat per Eva Miquel Tortosa al voltant dels relats i vivències de joves migrats que han creuat el Mediterrani. En col·laboració amb la Creu Roja i Zahorí Books, l'obra combina el rigor documental amb una dimensió poètica que posa el focus en la dignitat humana per sobre de les fronteres geo-polítiques."
+  },
+  {
+    "id": "art-102",
+    "title": "Recorregut per Museus: De l'ARQVA a la Neomudéjar",
+    "subtitle": "Una itinerància expositiva per diferents centres d'art contemporani",
+    "category": "Exposicions",
+    "date": "2023-05-20",
+    "author": "Redacció d'Art",
+    "image": "/expo_img/1688980723203.jpg",
+    "summary": "Les obres en gran format i dibuixos originals de 'Desde el agua' s'han exhibit al Museo Nacional de Arqueología Subacuática (ARQVA), al Museo Nacional de Antropología i a La Neomudéjar.",
+    "content": "L'exposició proposa un diàleg entre l'arqueologia de la memòria marítima i el drama contemporani de les migracions. Les peces exposades inclouen dibuixos en grafit d'alta precisió, projeccions de vídeo i textures d'aigua que conviden a l'espectador a contemplar la mar des d'una perspectiva poètica i compromesa."
+  },
+  {
+    "id": "art-103",
+    "title": "El Dibuix en Grafit com a Refugi i Testimoni",
+    "subtitle": "Sobre el procés de creació i la traducció de la fotografia al paper",
+    "category": "Procés Creatiu",
+    "date": "2024-02-10",
+    "author": "Eva Miquel Tortosa",
+    "image": "/expo_img/1688980723505.jpg",
+    "summary": "Un viatge visual on el llapis de grafit es converteix en l'eina central per capturar la transparència de l'aigua, el silenci i la profunditat dels testimonis.",
+    "content": "A través de capes successives de grafit, l'aigua deixa de ser només un medi físic per transformar-se en símbol de memòria i pas. Cada dibuix s'inicia a partir d'un registre fotogràfic i d'un diàleg directe amb els protagonists, traduint la immediatesa de la imatge a la lentitud meditativa del dibuix manual."
+  }
+]
