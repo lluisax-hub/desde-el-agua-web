@@ -79,29 +79,35 @@ async function loadAdminArticles() {
       return;
     }
 
-    tbody.innerHTML = articles.map(art => `
-      <tr>
-        <td style="width: 80px;">
-          <img src="${art.image}" alt="${art.title}" style="width: 60px; height: 45px; object-fit: cover; border-radius: 4px;">
-        </td>
-        <td>
-          <strong style="color: var(--text-main);">${art.title}</strong>
-          ${art.subtitle ? `<br><small style="color: var(--text-muted);">${art.subtitle}</small>` : ''}
-        </td>
-        <td><span class="gallery-item-badge">${art.category}</span></td>
-        <td style="font-size: 0.85rem; color: var(--text-muted);">${art.date}</td>
-        <td>
-          <button class="btn-danger" onclick="deleteArticle('${art.id}', '${art.title}')">Esborrar</button>
-        </td>
-      </tr>
-    `).join('');
+    tbody.innerHTML = articles.map(art => {
+      const imgSrc = (art.image && (art.image.startsWith('data:image') || art.image.startsWith('/expo_img/'))) 
+        ? art.image 
+        : '/expo_img/1688980723144.jpg';
+
+      return `
+        <tr>
+          <td style="width: 80px;">
+            <img src="${imgSrc}" alt="${art.title}" style="width: 60px; height: 45px; object-fit: cover; border-radius: 4px;" onerror="this.onerror=null; this.src='/expo_img/1688980723144.jpg';">
+          </td>
+          <td>
+            <strong style="color: var(--text-main);">${art.title}</strong>
+            ${art.subtitle ? `<br><small style="color: var(--text-muted);">${art.subtitle}</small>` : ''}
+          </td>
+          <td><span class="gallery-item-badge">${art.category}</span></td>
+          <td style="font-size: 0.85rem; color: var(--text-muted);">${art.date}</td>
+          <td>
+            <button class="btn-danger" onclick="deleteArticle('${art.id}', '${art.title}')">Esborrar</button>
+          </td>
+        </tr>
+      `;
+    }).join('');
   } catch (err) {
     console.error("Error carregant articles al CMS:", err);
     tbody.innerHTML = `<tr><td colspan="5" style="color: red; text-align: center;">Error carregant la llista d'articles.</td></tr>`;
   }
 }
 
-// Enviar nou article al backend amb conversió d'imatge a DataURL (per a compatibilitat total amb Vercel)
+// Enviar nou article al backend amb conversió d'imatge a DataURL o Selecció Predeterminada
 async function handleCreateArticle(e) {
   e.preventDefault();
 
@@ -116,14 +122,20 @@ async function handleCreateArticle(e) {
   const summary = document.getElementById('summary').value;
   const content = document.getElementById('content').value;
   const imageFileInput = document.getElementById('imageFile');
+  const presetImageInput = document.getElementById('presetImage');
 
-  let imageDataUrl = '';
+  let finalImage = presetImageInput ? presetImageInput.value : '';
+
   if (imageFileInput && imageFileInput.files && imageFileInput.files[0]) {
     try {
-      imageDataUrl = await readFileAsDataURL(imageFileInput.files[0]);
+      finalImage = await readFileAsDataURL(imageFileInput.files[0]);
     } catch (err) {
       console.error("Error llegint imatge:", err);
     }
+  }
+
+  if (!finalImage) {
+    finalImage = '/expo_img/1688980723144.jpg';
   }
 
   const payload = {
@@ -133,7 +145,7 @@ async function handleCreateArticle(e) {
     author,
     summary,
     content,
-    image: imageDataUrl || '/expo_img/1688980723144.jpg'
+    image: finalImage
   };
 
   try {

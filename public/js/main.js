@@ -116,6 +116,15 @@ function setupFilterButtons() {
   });
 }
 
+// Helper per obtenir una imatge vàlida d'article
+function getValidArticleImage(imgAttr) {
+  if (!imgAttr) return '/expo_img/1688980723144.jpg';
+  if (imgAttr.startsWith('data:image') || imgAttr.startsWith('/expo_img/')) {
+    return imgAttr;
+  }
+  return '/expo_img/1688980723144.jpg';
+}
+
 // 2. Carregar i Renderitzar Articles del Backend
 async function initArticles() {
   const articlesGrid = document.getElementById('articlesGrid');
@@ -136,8 +145,7 @@ async function initArticles() {
     }
 
     articlesGrid.innerHTML = articlesData.map(art => {
-      // Fallback per a imatges trencades o no trobades
-      const imgSrc = (art.image && !art.image.startsWith('/uploads/')) ? art.image : '/expo_img/1688980723144.jpg';
+      const imgSrc = getValidArticleImage(art.image);
 
       return `
         <article class="article-card" style="cursor: pointer;" onclick="openArticleModal('${art.id}')">
@@ -194,17 +202,20 @@ function openArticleModal(id) {
 
   if (!modal) return;
 
-  const imgSrc = (art.image && !art.image.startsWith('/uploads/')) ? art.image : '/expo_img/1688980723144.jpg';
+  const imgSrc = getValidArticleImage(art.image);
 
   if (catEl) catEl.textContent = art.category;
   if (dateEl) dateEl.textContent = formatDate(art.date);
   if (titleEl) titleEl.textContent = art.title;
   if (subtitleEl) subtitleEl.textContent = art.subtitle || '';
   if (authorEl) authorEl.textContent = `Per ${art.author}`;
+  
   if (imgEl) {
     imgEl.src = imgSrc;
+    imgEl.style.display = 'block';
     imgEl.onerror = () => { imgEl.src = '/expo_img/1688980723144.jpg'; };
   }
+  
   if (contentEl) contentEl.innerHTML = art.content.replace(/\n/g, '<br><br>');
 
   modal.classList.add('active');
