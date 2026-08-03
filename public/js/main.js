@@ -119,7 +119,7 @@ function setupFilterButtons() {
 // Helper per obtenir una imatge vàlida d'article
 function getValidArticleImage(imgAttr) {
   if (!imgAttr) return '/expo_img/1688980723144.jpg';
-  if (imgAttr.startsWith('data:image') || imgAttr.startsWith('/expo_img/') || imgAttr.startsWith('http')) {
+  if (typeof imgAttr === 'string' && (imgAttr.startsWith('data:image') || imgAttr.startsWith('/expo_img/') || imgAttr.startsWith('http'))) {
     return imgAttr;
   }
   return '/expo_img/1688980723144.jpg';
@@ -147,6 +147,12 @@ async function initArticles() {
     articlesGrid.innerHTML = articlesData.map(art => {
       const imgSrc = getValidArticleImage(art.image);
 
+      // Si el resum és molt curt o està buit, generar resum del contingut
+      let summaryText = art.summary;
+      if (!summaryText || summaryText.trim().length < 15) {
+        summaryText = art.content ? art.content.substring(0, 160) + '...' : '';
+      }
+
       return `
         <article class="article-card" style="cursor: pointer;" onclick="openArticleModal('${art.id}')">
           <div class="article-img-wrap">
@@ -159,7 +165,7 @@ async function initArticles() {
             </div>
             <h3 class="article-title">${art.title}</h3>
             ${art.subtitle ? `<h4 class="article-subtitle">${art.subtitle}</h4>` : ''}
-            <p class="article-summary">${art.summary || art.content}</p>
+            <p class="article-summary">${summaryText}</p>
             <div class="article-footer">
               <span class="article-author">Per ${art.author}</span>
               <span style="color: var(--accent-slate); font-weight: 600;">Llegir +</span>
@@ -214,9 +220,6 @@ function openArticleModal(id) {
   if (imgEl) {
     imgEl.src = imgSrc;
     imgEl.style.display = 'block';
-    imgEl.style.width = '100%';
-    imgEl.style.maxHeight = '420px';
-    imgEl.style.objectFit = 'cover';
     imgEl.onerror = () => { imgEl.src = '/expo_img/1688980723144.jpg'; };
   }
   
