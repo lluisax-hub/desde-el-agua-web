@@ -4,10 +4,12 @@ document.addEventListener('DOMContentLoaded', () => {
   initGallery();
   initArticles();
   initLightbox();
+  initArticleModal();
   initNavbarScroll();
 });
 
 let galleryData = [];
+let articlesData = [];
 let currentLang = localStorage.getItem('site_lang') || 'ca';
 
 // 0. Gestió d'Idiomes (Català / Castellà)
@@ -30,7 +32,6 @@ function initLanguage() {
 function applyLanguage(lang) {
   const dict = translations[lang] || translations['ca'];
 
-  // Actualitzar botons de selector
   document.querySelectorAll('.lang-btn').forEach(btn => {
     if (btn.getAttribute('data-lang') === lang) {
       btn.classList.add('active');
@@ -39,11 +40,9 @@ function applyLanguage(lang) {
     }
   });
 
-  // Traduir tots els elements amb data-i18n
   document.querySelectorAll('[data-i18n]').forEach(el => {
     const key = el.getAttribute('data-i18n');
     if (dict[key]) {
-      // Si conté HTML intern especial (com spans o tags), utilitzar innerHTML si cal, o textContent
       if (key === 'hero_title_1' || key === 'hero_subtitle' || key === 'concept_desc' || key === 'book_p1' || key === 'book_p2' || key === 'artist_desc') {
         el.innerHTML = dict[key];
       } else {
@@ -125,9 +124,9 @@ async function initArticles() {
   try {
     const res = await fetch('/api/articles');
     if (!res.ok) throw new Error("Error en carregar els articles");
-    const articles = await res.json();
+    articlesData = await res.json();
 
-    if (articles.length === 0) {
+    if (articlesData.length === 0) {
       articlesGrid.innerHTML = `
         <div style="grid-column: 1/-1; text-align: center; padding: 40px; color: var(--text-muted);">
           <p>Encara no s'ha publicat cap article. Utilitza el <a href="/admin.html" style="color: var(--accent-slate); text-decoration: underline;">Gestor CMS</a> per publicar el primer!</p>
@@ -136,30 +135,84 @@ async function initArticles() {
       return;
     }
 
-    articlesGrid.innerHTML = articles.map(art => `
-      <article class="article-card">
-        <div class="article-img-wrap">
-          <img src="${art.image}" alt="${art.title}" loading="lazy">
-        </div>
-        <div class="article-body">
-          <div class="article-meta">
-            <span class="article-cat">${art.category}</span>
-            <span class="article-date">${formatDate(art.date)}</span>
+    articlesGrid.innerHTML = articlesData.map(art => {
+      // Fallback per a imatges trencades o no trobades
+      const imgSrc = (art.image && !art.image.startsWith('/uploads/')) ? art.image : '/expo_img/1688980723144.jpg';
+
+      return `
+        <article class="article-card" style="cursor: pointer;" onclick="openArticleModal('${art.id}')">
+          <div class="article-img-wrap">
+            <img src="${imgSrc}" alt="${art.title}" loading="lazy" onerror="this.onerror=null; this.src='/expo_img/1688980723144.jpg';">
           </div>
-          <h3 class="article-title">${art.title}</h3>
-          ${art.subtitle ? `<h4 class="article-subtitle">${art.subtitle}</h4>` : ''}
-          <p class="article-summary">${art.summary || art.content}</p>
-          <div class="article-footer">
-            <span class="article-author">Per ${art.author}</span>
-            <span style="color: var(--accent-slate); font-weight: 600;">Llegir +</span>
+          <div class="article-body">
+            <div class="article-meta">
+              <span class="article-cat">${art.category}</span>
+              <span class="article-date">${formatDate(art.date)}</span>
+            </div>
+            <h3 class="article-title">${art.title}</h3>
+            ${art.subtitle ? `<h4 class="article-subtitle">${art.subtitle}</h4>` : ''}
+            <p class="article-summary">${art.summary || art.content}</p>
+            <div class="article-footer">
+              <span class="article-author">Per ${art.author}</span>
+              <span style="color: var(--accent-slate); font-weight: 600;">Llegir +</span>
+            </div>
           </div>
-        </div>
-      </article>
-    `).join('');
+        </article>
+      `;
+    }).join('');
   } catch (err) {
     console.error(err);
     articlesGrid.innerHTML = `<p style="grid-column: 1/-1; text-align: center; color: var(--text-muted);">Error en carregar els articles.</p>`;
   }
+}
+
+// 3. Modal d'Article Complet (Lectura)
+function initArticleModal() {
+  const modal = document.getElementById('articleModal');
+  const closeBtn = document.getElementById('articleModalClose');
+
+  if (!modal) return;
+
+  closeBtn?.addEventListener('click', closeArticleModal);
+  modal.addEventListener('click', (e) => {
+    if (e.target === modal) closeArticleModal();
+  });
+}
+
+function openArticleModal(id) {
+  const art = articlesData.find(a => a.id === id);
+  if (!art) return;
+
+  const modal = document.getElementById('articleModal');
+  const catEl = document.getElementById('artModalCat');
+  const dateEl = document.getElementById('artModalDate');
+  const titleEl = document.getElementById('artModalTitle');
+  const subtitleEl = document.getElementById('artModalSubtitle');
+  const authorEl = document.getElementById('artModalAuthor');
+  const imgEl = document.getElementById('artModalImg');
+  const contentEl = document.getElementById('artModalContent');
+
+  if (!modal) return;
+
+  const imgSrc = (art.image && !art.image.startsWith('/uploads/')) ? art.image : '/expo_img/1688980723144.jpg';
+
+  if (catEl) catEl.textContent = art.category;
+  if (dateEl) dateEl.textContent = formatDate(art.date);
+  if (titleEl) titleEl.textContent = art.title;
+  if (subtitleEl) subtitleEl.textContent = art.subtitle || '';
+  if (authorEl) authorEl.textContent = `Per ${art.author}`;
+  if (imgEl) {
+    imgEl.src = imgSrc;
+    imgEl.onerror = () => { imgEl.src = '/expo_img/1688980723144.jpg'; };
+  }
+  if (contentEl) contentEl.innerHTML = art.content.replace(/\n/g, '<br><br>');
+
+  modal.classList.add('active');
+}
+
+function closeArticleModal() {
+  const modal = document.getElementById('articleModal');
+  if (modal) modal.classList.remove('active');
 }
 
 function formatDate(dateStr) {
@@ -172,7 +225,7 @@ function formatDate(dateStr) {
   }
 }
 
-// 3. Lightbox Functionality
+// 4. Lightbox Functionality
 function initLightbox() {
   const lightbox = document.getElementById('lightbox');
   const closeBtn = document.getElementById('lightboxClose');
@@ -185,7 +238,10 @@ function initLightbox() {
   });
 
   document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape') closeLightbox();
+    if (e.key === 'Escape') {
+      closeLightbox();
+      closeArticleModal();
+    }
   });
 }
 
@@ -207,7 +263,7 @@ function closeLightbox() {
   if (lightbox) lightbox.classList.remove('active');
 }
 
-// 4. Smooth Scroll
+// 5. Smooth Scroll
 function initNavbarScroll() {
   const links = document.querySelectorAll('.nav-link');
   window.addEventListener('scroll', () => {
