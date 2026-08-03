@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="ca">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CMS Gestor de Continguts | Desde El Agua</title>
+  <meta name="description" content="Panel d'administració per a la publicació i gestió d'articles del projecte Desde El Agua.">
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+
+  <!-- Header Admin -->
+  <header class="navbar">
+    <div class="container nav-container">
+      <a href="/" class="brand">
+        <span class="brand-title">DESDE EL AGUA — CMS</span>
+        <span class="brand-artist">PANEL D'ADMINISTRACIÓ</span>
+      </a>
+      <div>
+        <a href="/" class="btn-secondary">← Tornar a la Web Pública</a>
+      </div>
+    </div>
+  </header>
+
+  <main class="admin-container">
+
+    <!-- Card de Login de Seguretat -->
+    <div id="loginCard" class="form-card" style="max-width: 480px; margin: 40px auto; text-align: center;">
+      <h2 style="font-family: var(--font-heading); font-size: 2rem; margin-bottom: 12px; color: var(--text-main);">
+        🔐 Accés al CMS d'Administració
+      </h2>
+      <p style="color: var(--text-muted); font-size: 0.95rem; margin-bottom: 24px;">
+        Introdueix la contrasenya d'administrador per gestionar els articles.
+      </p>
+
+      <form id="loginForm">
+        <div class="form-group" style="text-align: left;">
+          <label class="form-label" for="adminPassword">Contrasenya *</label>
+          <input type="password" id="adminPassword" class="form-input" placeholder="Escriu la contrasenya (per defecte: eva)" required>
+        </div>
+
+        <p id="loginError" style="color: #e53e3e; font-size: 0.85rem; margin-bottom: 16px; display: none;"></p>
+
+        <button type="submit" class="btn-primary" style="width: 100%; justify-content: center;">
+          Entrar al Panel d'Administració
+        </button>
+      </form>
+    </div>
+
+    <!-- Contingut CMS d'Administració (Amagat fins a l'autenticació) -->
+    <div id="adminContent" style="display: none;">
+      <div class="admin-header">
+        <div>
+          <h1 style="font-family: var(--font-heading); font-size: 2.5rem; color: var(--text-main);">Gestor d'Articles i Notícies</h1>
+          <p style="color: var(--text-muted);">Publica noves novetats, crítiques o exposicions directament a la web.</p>
+        </div>
+        <button id="btnLogout" class="btn-secondary" style="font-size: 0.85rem;">🔒 Tancar Sessió</button>
+      </div>
+
+      <!-- Formulari de Publicació -->
+      <div class="form-card">
+        <h2 style="font-family: var(--font-heading); font-size: 1.8rem; margin-bottom: 24px; border-bottom: 1px solid var(--border-color); padding-bottom: 12px;">
+          ✎ Publicar Nou Article
+        </h2>
+
+        <form id="articleForm" enctype="multipart/form-data">
+          <div class="form-group">
+            <label class="form-label" for="title">Títol de l'Article *</label>
+            <input type="text" id="title" name="title" class="form-input" placeholder="Ex: Nova Exposició a la Galeria Sala Parés" required>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label" for="subtitle">Subtítol / Antetítol</label>
+              <input type="text" id="subtitle" name="subtitle" class="form-input" placeholder="Ex: Del 15 d'octubre al 20 de novembre">
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="category">Categoria</label>
+              <select id="category" name="category" class="form-select">
+                <option value="Exposicions">Exposicions</option>
+                <option value="Premi & Publicació">Premi & Publicació</option>
+                <option value="Procés Creatiu">Procés Creatiu</option>
+                <option value="Notícies">Notícies</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label" for="author">Autor/a</label>
+              <input type="text" id="author" name="author" class="form-input" value="Eva Miquel Tortosa">
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="imageFile">Pujar Imatge de Portada</label>
+              <input type="file" id="imageFile" name="imageFile" class="form-input" accept="image/*">
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="summary">Resum Curt (opcional)</label>
+            <input type="text" id="summary" name="summary" class="form-input" placeholder="Una breu frase introductoria per a la targeta...">
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="content">Contingut Complet de l'Article *</label>
+            <textarea id="content" name="content" rows="6" class="form-textarea" placeholder="Escriu aquí el text complet de l'article..." required></textarea>
+          </div>
+
+          <div style="display: flex; justify-content: flex-end; gap: 12px; margin-top: 24px;">
+            <button type="reset" class="btn-secondary">Netejar Formulari</button>
+            <button type="submit" class="btn-primary" id="btnSubmit">Publicar Article Ara</button>
+          </div>
+        </form>
+      </div>
+
+      <!-- Taula d'Articles Existents -->
+      <div>
+        <h2 style="font-family: var(--font-heading); font-size: 1.8rem; margin-bottom: 20px;">
+          📑 Articles Publicats
+        </h2>
+        <div style="overflow-x: auto;">
+          <table class="admin-table">
+            <thead>
+              <tr>
+                <th>Imatge</th>
+                <th>Títol</th>
+                <th>Categoria</th>
+                <th>Data</th>
+                <th>Accions</th>
+              </tr>
+            </thead>
+            <tbody id="adminArticlesTbody">
+              <!-- Omplert dinàmicament via JS -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <script src="/js/admin.js"></script>
+</body>
+</html>
