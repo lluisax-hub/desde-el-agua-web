@@ -7,9 +7,20 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'eva';
 
-// Prioritzar les URLs HTTP de Vercel KV / Upstash REST API
-const REDIS_URL = process.env.KV_REST_API_URL || process.env.UPSTASH_REDIS_REST_URL || process.env.STORAGE_REST_API_URL;
-const REDIS_TOKEN = process.env.KV_REST_API_TOKEN || process.env.UPSTASH_REDIS_REST_TOKEN || process.env.STORAGE_REST_API_TOKEN;
+// Cerquem totes les possibles variables de Redis / Upstash / KV de Vercel
+function getRedisConfig() {
+  const url = process.env.KV_REST_API_URL || 
+              process.env.UPSTASH_REDIS_REST_URL || 
+              process.env.STORAGE_REST_API_URL || 
+              process.env.UPSTASH_KV_REST_API_URL;
+
+  const token = process.env.KV_REST_API_TOKEN || 
+                process.env.UPSTASH_REDIS_REST_TOKEN || 
+                process.env.STORAGE_REST_API_TOKEN || 
+                process.env.UPSTASH_KV_REST_API_TOKEN;
+
+  return { url, token };
+}
 
 // Middleware amb límit augmentat per a imatges en DataURL
 app.use(express.json({ limit: '10mb' }));
@@ -55,15 +66,14 @@ function getInitialLocalArticles() {
 
 // Helper asíncron per carregar articles (des de Redis si està connectat, o local)
 async function getArticlesAsync() {
-  if (REDIS_URL && REDIS_TOKEN && REDIS_URL.startsWith('http')) {
+  const { url, token } = getRedisConfig();
+
+  if (url && token && url.startsWith('http')) {
     try {
-      const res = await fetch(REDIS_URL, {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${REDIS_TOKEN}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(["GET", "articles"])
+      // 1. Provar mètode REST directe /get/articles
+      const cleanUrl = url.endsWith('/') ? url.slice(0, -1) : url;
+      const res = await fetch(`${cleanUrl}/get/articles`, {
+        headers: { Authorization: `Bearer ${token}` }
       });
       const data = await res.json();
       if (data && data.result) {
@@ -73,7 +83,7 @@ async function getArticlesAsync() {
         }
       }
     } catch (err) {
-      console.error("Error llegint de Redis:", err);
+      console.error("Error llegint de Redis (/get/articles):", err);
     }
   }
   return getInitialLocalArticles();
@@ -81,18 +91,21 @@ async function getArticlesAsync() {
 
 // Helper asíncron per desar articles (a Redis i local)
 async function saveArticlesAsync(articles) {
-  if (REDIS_URL && REDIS_TOKEN && REDIS_URL.startsWith('http')) {
+  const { url, token } = getRedisConfig();
+
+  if (url && token && url.startsWith('http')) {
     try {
-      await fetch(REDIS_URL, {
+      const cleanUrl = url.endsWith('/') ? url.slice(0, -1) : url;
+      await fetch(`${cleanUrl}/set/articles`, {
         method: 'POST',
         headers: {
-          Authorization: `Bearer ${REDIS_TOKEN}`,
+          Authorization: `Bearer ${token}`,
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify(["SET", "articles", JSON.stringify(articles)])
+        body: JSON.stringify(JSON.stringify(articles))
       });
     } catch (err) {
-      console.error("Error desant a Redis:", err);
+      console.error("Error desant a Redis (/set/articles):", err);
     }
   }
 
@@ -111,6 +124,17 @@ function checkAuth(req, res, next) {
   }
   return res.status(401).json({ error: "Contrasenya d'administrador incorrecta." });
 }
+
+// Endpoint de diagnòstic de la base de dades
+app.get('/api/debug-db', (req, res) => {
+  const { url, token } = getRedisConfig();
+  res.json({
+    connected: !!(url && token),
+    redis_url_found: url ? url.substring(0, 25) + '...' : 'NO TROBAT',
+    is_http: url ? url.startsWith('http') : false,
+    environment: process.env.VERCEL ? 'VERCEL_CLOUD' : 'LOCAL'
+  });
+});
 
 // REST API Endpoints
 app.post('/api/login', (req, res) => {
