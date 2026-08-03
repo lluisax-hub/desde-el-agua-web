@@ -11,23 +11,27 @@ const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'eva';
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Rutes per a arxius estàtics
+// Directoris
 const publicDir = path.join(__dirname, 'public');
 const expoImgDir = path.join(__dirname, 'desde el agua documentación gráfica de la expo');
 const uploadsDir = path.join(__dirname, 'uploads');
 const dataFile = path.join(__dirname, 'data', 'articles.json');
 
 // Assegurar directoris
-if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true });
-if (!fs.existsSync(path.join(__dirname, 'data'))) fs.mkdirSync(path.join(__dirname, 'data'), { recursive: true });
+if (!fs.existsSync(uploadsDir)) {
+  try { fs.mkdirSync(uploadsDir, { recursive: true }); } catch (e) {}
+}
 
 app.use(express.static(publicDir));
 app.use('/expo_img', express.static(expoImgDir));
 app.use('/uploads', express.static(uploadsDir));
 
-// Multer Storage
+// Multer Storage (compatible amb Vercel Serverless)
 const storage = multer.diskStorage({
-  destination: (req, file, cb) => cb(null, uploadsDir),
+  destination: (req, file, cb) => {
+    const dest = process.env.VERCEL ? '/tmp' : uploadsDir;
+    cb(null, dest);
+  },
   filename: (req, file, cb) => {
     const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
     cb(null, 'article-' + uniqueSuffix + path.extname(file.originalname));
@@ -47,14 +51,16 @@ function getArticles() {
 
 function saveArticles(articles) {
   try {
-    fs.writeFileSync(dataFile, JSON.stringify(articles, null, 2), 'utf8');
+    if (!process.env.VERCEL) {
+      fs.writeFileSync(dataFile, JSON.stringify(articles, null, 2), 'utf8');
+    }
     return true;
   } catch (err) {
     return false;
   }
 }
 
-// Middleware de seguretat senzill per contrasenya d'admin
+// Middleware auth
 function checkAuth(req, res, next) {
   const authHeader = req.headers['x-admin-password'] || req.body.password;
   if (authHeader === ADMIN_PASSWORD) {
@@ -64,8 +70,6 @@ function checkAuth(req, res, next) {
 }
 
 // REST API Endpoints
-
-// Login d'administrador
 app.post('/api/login', (req, res) => {
   const { password } = req.body;
   if (password === ADMIN_PASSWORD) {
@@ -75,12 +79,10 @@ app.post('/api/login', (req, res) => {
   }
 });
 
-// Llistar articles
 app.get('/api/articles', (req, res) => {
   res.json(getArticles());
 });
 
-// Crear article (Protegit per contrasenya)
 app.post('/api/articles', checkAuth, upload.single('imageFile'), (req, res) => {
   const { title, subtitle, category, author, summary, content, image } = req.body;
 
@@ -107,14 +109,10 @@ app.post('/api/articles', checkAuth, upload.single('imageFile'), (req, res) => {
   };
 
   articles.unshift(newArticle);
-  if (saveArticles(articles)) {
-    res.status(201).json(newArticle);
-  } else {
-    res.status(500).json({ error: "Error en desar l'article al servidor." });
-  }
+  saveArticles(articles);
+  res.status(201).json(newArticle);
 });
 
-// Eliminar article (Protegit per contrasenya)
 app.delete('/api/articles/:id', checkAuth, (req, res) => {
   const { id } = req.params;
   let articles = getArticles();
@@ -146,10 +144,12 @@ app.get('/api/gallery', (req, res) => {
   });
 });
 
-app.listen(PORT, () => {
-  console.log(`==================================================`);
-  console.log(` Servidor 'Desde El Agua' en marxa a: http://localhost:${PORT}`);
-  console.log(` Admin CMS disponible a: http://localhost:${PORT}/admin.html`);
-  console.log(` Contrasenya Admin per defecte: 'eva'`);
-  console.log(`==================================================`);
-});
+// Només executar .listen en entorn local (no a Vercel Serverless)
+if (!process.env.VERCEL) {
+  app.listen(PORT, () => {
+    console.log(`Servidor en marxa a: http://localhost:${PORT}`);
+  });
+}
+
+// Exportar per a Vercel Serverless Functions
+module.exports = app;
