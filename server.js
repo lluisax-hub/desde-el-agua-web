@@ -7,6 +7,10 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'eva';
 
+// Variables d'entorn Upstash Redis / Vercel KV
+const REDIS_URL = process.env.UPSTASH_REDIS_REST_URL || process.env.KV_REST_API_URL || process.env.STORAGE_REST_API_URL;
+const REDIS_TOKEN = process.env.UPSTASH_REDIS_REST_TOKEN || process.env.KV_REST_API_TOKEN || process.env.STORAGE_REST_API_TOKEN;
+
 // Middleware
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
@@ -26,7 +30,7 @@ app.use(express.static(publicDir));
 app.use('/expo_img', express.static(expoImgDir));
 app.use('/uploads', express.static(uploadsDir));
 
-// Multer Storage (compatible amb Vercel Serverless)
+// Multer Storage
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
     const dest = process.env.VERCEL ? '/tmp' : uploadsDir;
@@ -39,8 +43,8 @@ const storage = multer.diskStorage({
 });
 const upload = multer({ storage: storage });
 
-// Helper llegir/escriure articles
-function getArticles() {
+// Helper llegir articles locals de data/articles.json
+function getInitialLocalArticles() {
   try {
     if (!fs.existsSync(dataFile)) return [];
     return JSON.parse(fs.readFileSync(dataFile, 'utf8'));
@@ -49,14 +53,48 @@ function getArticles() {
   }
 }
 
-function saveArticles(articles) {
-  try {
-    if (!process.env.VERCEL) {
-      fs.writeFileSync(dataFile, JSON.stringify(articles, null, 2), 'utf8');
+// Helper asíncron per carregar articles (des de Redis si està connectat, o local)
+async function getArticlesAsync() {
+  if (REDIS_URL && REDIS_TOKEN) {
+    try {
+      const res = await fetch(`${REDIS_URL}/get/articles`, {
+        headers: { Authorization: `Bearer ${REDIS_TOKEN}` }
+      });
+      const data = await res.json();
+      if (data && data.result) {
+        const parsed = typeof data.result === 'string' ? JSON.parse(data.result) : data.result;
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          return parsed;
+        }
+      }
+    } catch (err) {
+      console.error("Error llegint de Redis:", err);
     }
-    return true;
-  } catch (err) {
-    return false;
+  }
+  return getInitialLocalArticles();
+}
+
+// Helper asíncron per desar articles (a Redis i local)
+async function saveArticlesAsync(articles) {
+  if (REDIS_URL && REDIS_TOKEN) {
+    try {
+      await fetch(`${REDIS_URL}/set/articles`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${REDIS_TOKEN}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(JSON.stringify(articles))
+      });
+    } catch (err) {
+      console.error("Error desant a Redis:", err);
+    }
+  }
+
+  if (!process.env.VERCEL) {
+    try {
+      fs.writeFileSync(dataFile, JSON.stringify(articles, null, 2), 'utf8');
+    } catch (err) {}
   }
 }
 
@@ -79,11 +117,12 @@ app.post('/api/login', (req, res) => {
   }
 });
 
-app.get('/api/articles', (req, res) => {
-  res.json(getArticles());
+app.get('/api/articles', async (req, res) => {
+  const articles = await getArticlesAsync();
+  res.json(articles);
 });
 
-app.post('/api/articles', checkAuth, upload.single('imageFile'), (req, res) => {
+app.post('/api/articles', checkAuth, upload.single('imageFile'), async (req, res) => {
   const { title, subtitle, category, author, summary, content, image } = req.body;
 
   if (!title || !content) {
@@ -95,7 +134,7 @@ app.post('/api/articles', checkAuth, upload.single('imageFile'), (req, res) => {
     finalImageUrl = `/uploads/${req.file.filename}`;
   }
 
-  const articles = getArticles();
+  const articles = await getArticlesAsync();
   const newArticle = {
     id: 'art-' + Date.now(),
     title: title.trim(),
@@ -109,18 +148,18 @@ app.post('/api/articles', checkAuth, upload.single('imageFile'), (req, res) => {
   };
 
   articles.unshift(newArticle);
-  saveArticles(articles);
+  await saveArticlesAsync(articles);
   res.status(201).json(newArticle);
 });
 
-app.delete('/api/articles/:id', checkAuth, (req, res) => {
+app.delete('/api/articles/:id', checkAuth, async (req, res) => {
   const { id } = req.params;
-  let articles = getArticles();
+  let articles = await getArticlesAsync();
   const initialLen = articles.length;
   articles = articles.filter(a => a.id !== id);
 
   if (articles.length < initialLen) {
-    saveArticles(articles);
+    await saveArticlesAsync(articles);
     res.json({ success: true, message: "Article eliminat correctament." });
   } else {
     res.status(404).json({ error: "Article no trobat." });
@@ -144,12 +183,10 @@ app.get('/api/gallery', (req, res) => {
   });
 });
 
-// Només executar .listen en entorn local (no a Vercel Serverless)
 if (!process.env.VERCEL) {
   app.listen(PORT, () => {
     console.log(`Servidor en marxa a: http://localhost:${PORT}`);
   });
 }
 
-// Exportar per a Vercel Serverless Functions
 module.exports = app;
