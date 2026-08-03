@@ -119,7 +119,7 @@ function setupFilterButtons() {
 // Helper per obtenir una imatge vàlida d'article
 function getValidArticleImage(imgAttr) {
   if (!imgAttr) return '/expo_img/1688980723144.jpg';
-  if (imgAttr.startsWith('data:image') || imgAttr.startsWith('/expo_img/')) {
+  if (imgAttr.startsWith('data:image') || imgAttr.startsWith('/expo_img/') || imgAttr.startsWith('http')) {
     return imgAttr;
   }
   return '/expo_img/1688980723144.jpg';
@@ -199,6 +199,7 @@ function openArticleModal(id) {
   const authorEl = document.getElementById('artModalAuthor');
   const imgEl = document.getElementById('artModalImg');
   const contentEl = document.getElementById('artModalContent');
+  const modalBox = modal ? modal.querySelector('.lightbox-content') : null;
 
   if (!modal) return;
 
@@ -213,11 +214,17 @@ function openArticleModal(id) {
   if (imgEl) {
     imgEl.src = imgSrc;
     imgEl.style.display = 'block';
+    imgEl.style.width = '100%';
+    imgEl.style.maxHeight = '420px';
+    imgEl.style.objectFit = 'cover';
     imgEl.onerror = () => { imgEl.src = '/expo_img/1688980723144.jpg'; };
   }
   
   if (contentEl) contentEl.innerHTML = art.content.replace(/\n/g, '<br><br>');
 
+  // Reiniciar scroll a la part superior de la finestra
+  if (modalBox) modalBox.scrollTop = 0;
+  
   modal.classList.add('active');
 }
 
